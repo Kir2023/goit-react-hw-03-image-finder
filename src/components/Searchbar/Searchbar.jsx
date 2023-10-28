@@ -1,15 +1,15 @@
 import PropTypes from 'prop-types';
 import css from './Searchbar.module.css'
 
-export const Searchbar = ({onSubmit}) => {
-return (
+export const Searchbar = ({onSubmit}) => (
 <header className={css.searchbar}>
-  <form onSubmit={onSubmit} className={css.searchForm}>
+  <form className={css.searchForm} onSubmit={onSubmit}>
     <button type="submit" className={css.searchButton}>
       <span className={css.searchButtonLabel}>Search</span>
     </button>
 
     <input
+      name="inputForSearch"
       className={css.searchFormInput}
       type="text"
       autoComplete="off"
@@ -19,7 +19,6 @@ return (
   </form>
 </header>
 );
-};
 
 Searchbar.propTypes = {
   onSubmit: PropTypes.func,
