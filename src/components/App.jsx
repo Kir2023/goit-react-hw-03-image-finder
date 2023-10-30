@@ -53,17 +53,23 @@ export class App extends Component {
     });
   };
 
-  handleModalClose = () => {
+  handleModalClose = event => {
+    if (event.target === event.currentTarget) {
     this.setState({
       modalOpen: false,
       modalImg: '',
       modalAlt: '',
     });
+    }
   };
 
   handleKeyDown = event => {
     if (event.code === 'Escape') {
-      this.handleModalClose();
+      this.setState({
+      modalOpen: false,
+      modalImg: '',
+      modalAlt: '',
+    });
     }
   };
 
