@@ -1,81 +1,64 @@
-import { Component } from 'react';
+import * as pixabayapi from './FetchImages/FetchImages';
+import React, { Component } from 'react';
 import { Searchbar } from './Searchbar/Searchbar';
-import { fetchImages } from './FetchImages/FetchImages';
 import { ImageGallery } from './ImageGallery/ImageGallery';
-import { LoadMoreButton } from './LoadMoreButton/LoadMoreButton';
 import { Loader } from './Loader/Loader';
-import { Modal } from './Modal/Modal';
-import React from 'react';
+import { LoadMoreButton } from './LoadMoreButton/LoadMoreButton';
 
 export class App extends Component {
   state = {
+    query: '',
     images: [],
+    page: 1,
+    totalHits: 0,
+    isLoadMoreBtnVisible: false,
     isLoading: false,
-    currentSearch: '',
-    pageNr: 1,
-    modalOpen: false,
-    modalImg: '',
-    modalAlt: '',
   };
 
-  handleSubmit = async e => {
-    e.preventDefault();
-    this.setState({ isLoading: true });
-    const inputForSearch = e.target.elements.inputForSearch;
-    if (inputForSearch.value.trim() === '') {
-      return;
+  async componentDidUpdate(_, prevState) {
+    const { query, page } = this.state;
+    if (
+      (prevState.query !== query && query !== '') ||
+      prevState.page !== page
+    ) {
+      try {
+        this.setState({ isLoading: true });
+
+        const images = await pixabayapi.fetchImages({ query, page });
+        if (images.hits <= 0) {
+          alert('Sorry. There are no images ... 😭');
+          return;
+        }
+        this.setState(prevState => ({
+          images: [
+            ...prevState.images,
+            ...this.getNormalizedImages(images.hits),
+          ],
+          isLoadMoreBtnVisible: page < Math.ceil(images.totalHits / 12),
+        }));
+      } catch (err) {
+        alert('Sorry, something goes wrong');
+      } finally {
+        this.setState({ isLoading: false });
+      }
     }
-    const response = await fetchImages(inputForSearch.value, 1);
-    this.setState({
-      images: response,
-      isLoading: false,
-      currentSearch: inputForSearch.value,
-      pageNr: 1,
-    });
-  };
-
-  handleClickMore = async () => {
-    const response = await fetchImages(
-      this.state.currentSearch,
-      this.state.pageNr + 1
-    );
-    this.setState({
-      images: [...this.state.images, ...response],
-      pageNr: this.state.pageNr + 1,
-    });
-  };
-
-  handleImageClick = e => {
-    this.setState({
-      modalOpen: true,
-      modalAlt: e.target.alt,
-      modalImg: e.target.name,
-    });
-  };
-
-  handleModalClose = event => {
-    if (event.target === event.currentTarget) {
-    this.setState({
-      modalOpen: false,
-      modalImg: '',
-      modalAlt: '',
-    });
-    }
-  };
-
-  handleKeyDown = event => {
-    if (event.code === 'Escape') {
-      this.setState({
-      modalOpen: false,
-      modalImg: '',
-      modalAlt: '',
-    });
-    }
-  };
-
-  async componentDidMount() {
-    window.addEventListener('keydown', this.handleKeyDown);
   }
+  getNormalizedImages(array) {
+    return array.map(({ id, webformatURL, largeImageURL, tags }) => ({
+      id,
+      webformatURL,
+      largeImageURL,
+      tags,
+    }));
+  }
+
+  handleFormSubmit = query => {
+    this.setState({ query, images: [], page: 1 });
+  };
+
+  handleClickLoadMore = () => {
+    return this.setState(prevState => ({ page: prevState.page + 1 }));
+  };
 
   render() {
     return (
@@ -87,27 +70,17 @@ export class App extends Component {
           paddingBottom: '24px',
         }}
       >
-        {this.state.isLoading ? (
-          <Loader />
-        ) : (
-          <React.Fragment>
-            <Searchbar onSubmit={this.handleSubmit} />
-            <ImageGallery
-              onImageClick={this.handleImageClick}
-              images={this.state.images}
-            />
-            {this.state.images.length > 0 ? (
-              <LoadMoreButton onClick={this.handleClickMore} />
-            ) : null}
-          </React.Fragment>
+        <Searchbar onSubmit={this.handleFormSubmit} />
+
+        {this.state.images.length > 0 && (
+          <ImageGallery images={this.state.images}></ImageGallery>
         )}
-        {this.state.modalOpen ? (
-          <Modal
-            src={this.state.modalImg}
-            alt={this.state.modalAlt}
-            handleClose={this.handleModalClose}
-          />
-        ) : null}
+
+        {this.state.isLoading && <Loader />}
+
+        {this.state.isLoadMoreBtnVisible && !this.state.isLoading && (
+          <LoadMoreButton onClick={this.handleClickLoadMore} />
+        )}
       </div>
     );
   }
